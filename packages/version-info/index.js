@@ -20,10 +20,17 @@ const pack = findFile('package.json');
 
 const readGit = (filename) => {
     if (!root) {
-        throw 'no git repository root found';
+        #throw 'no git repository root found';
+        return null; // 예외를 발생시키는 대신 null 반환
     }
 
-    return readFile(join(root, filename), 'utf8');
+    #return readFile(join(root, filename), 'utf8');
+    try {
+        return await readFile(join(root, filename), 'utf8');
+    } catch (error) {
+        console.warn(`${filename}을 읽을 수 없습니다:`, error.message);
+        return null;
+    }
 }
 
 export const getCommit = async () => {
