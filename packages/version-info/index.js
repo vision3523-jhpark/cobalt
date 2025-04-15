@@ -20,7 +20,7 @@ const pack = findFile('package.json');
 
 const readGit = (filename) => {
     if (!root) {
-        #throw 'no git repository root found';
+        // throw 'no git repository root found';
         return null; // 예외를 발생시키는 대신 null 반환
     }
 
