@@ -1,7 +1,7 @@
-import { existsSync }  from 'node:fs';
+import { existsSync } from 'node:fs';
 import { join, parse } from 'node:path';
-import { cwd }         from 'node:process';
-import { readFile }    from 'node:fs/promises';
+import { cwd } from 'node:process';
+import { readFile } from 'node:fs/promises';
 
 const findFile = (file) => {
     let dir = cwd();
@@ -13,18 +13,17 @@ const findFile = (file) => {
 
         dir = join(dir, '../');
     }
+    return null; // undefined 대신 null 반환
 }
 
 const root = findFile('.git');
 const pack = findFile('package.json');
 
-const readGit = (filename) => {
+const readGit = async (filename) => {
     if (!root) {
-        // throw 'no git repository root found';
         return null; // 예외를 발생시키는 대신 null 반환
     }
 
-    // return readFile(join(root, filename), 'utf8');
     try {
         return await readFile(join(root, filename), 'utf8');
     } catch (error) {
@@ -34,11 +33,16 @@ const readGit = (filename) => {
 }
 
 export const getCommit = async () => {
-    return (await readGit('.git/logs/HEAD'))
+    try {
+        const head = await readGit('.git/logs/HEAD');
+        return head
             ?.split('\n')
             ?.filter(String)
             ?.pop()
-            ?.split(' ')[1];
+            ?.split(' ')[1] || 'unknown';
+    } catch (error) {
+        return 'unknown';
+    }
 }
 
 export const getBranch = async () => {
@@ -46,40 +50,47 @@ export const getBranch = async () => {
         return process.env.CF_PAGES_BRANCH;
     }
 
-    return (await readGit('.git/HEAD'))
+    try {
+        const head = await readGit('.git/HEAD');
+        return head
             ?.replace(/^ref: refs\/heads\//, '')
-            ?.trim();
+            ?.trim() || 'unknown';
+    } catch (error) {
+        return 'unknown';
+    }
 }
 
 export const getRemote = async () => {
-    let remote = (await readGit('.git/config'))
-                    ?.split('\n')
-                    ?.find(line => line.includes('url = '))
-                    ?.split('url = ')[1];
+    try {
+        let remote = (await readGit('.git/config'))
+            ?.split('\n')
+            ?.find(line => line.includes('url = '))
+            ?.split('url = ')[1];
 
-    if (remote?.startsWith('git@')) {
-        remote = remote.split(':')[1];
-    } else if (remote?.startsWith('http')) {
-        remote = new URL(remote).pathname.substring(1);
+        if (remote?.startsWith('git@')) {
+            remote = remote.split(':')[1];
+        } else if (remote?.startsWith('http')) {
+            remote = new URL(remote).pathname.substring(1);
+        }
+
+        remote = remote?.replace(/\.git$/, '');
+
+        return remote || process.env.REPOSITORY_URL || 'unknown';
+    } catch (error) {
+        return process.env.REPOSITORY_URL || 'unknown';
     }
-
-    remote = remote?.replace(/\.git$/, '');
-
-    if (!remote) {
-        throw 'could not parse remote';
-    }
-
-    return remote;
 }
 
 export const getVersion = async () => {
-    if (!pack) {
-        throw 'no package root found';
+    try {
+        if (!pack) {
+            return process.env.APP_VERSION || 'unknown';
+        }
+
+        const packageJson = await readFile(join(pack, 'package.json'), 'utf8');
+        const { version } = JSON.parse(packageJson);
+        return version;
+    } catch (error) {
+        return process.env.APP_VERSION || 'unknown';
     }
-
-    const { version } = JSON.parse(
-        await readFile(join(pack, 'package.json'), 'utf8')
-    );
-
-    return version;
 }
