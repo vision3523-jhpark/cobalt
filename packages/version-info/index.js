@@ -24,7 +24,7 @@ const readGit = (filename) => {
         return null; // 예외를 발생시키는 대신 null 반환
     }
 
-    #return readFile(join(root, filename), 'utf8');
+    // return readFile(join(root, filename), 'utf8');
     try {
         return await readFile(join(root, filename), 'utf8');
     } catch (error) {
